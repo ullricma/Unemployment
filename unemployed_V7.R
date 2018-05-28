@@ -349,12 +349,9 @@ summary(nal$bgp175)
 # skewness = Schiefe, neg --> rechssteil/linksschief/nach rechts geneigt; pos --> linkssteil/rechtsschief/nach links geneigt
 # Kurtosis = Wie spitz ist Verteilung?, 0=normalgipflig, >0 steilgipflig, <0 flachgipflig
 
-
-                
 #data_all_wage$age_rec2 <- cut(data_all_wage$age, seq(from = 0, to = 110, by = 5))
 
-#####Deskriptive Analyse (plots) der Drittvariablen LEBENSPHASENMODELL#####
-
+#####Deskriptive Analyse (plots) des Gesamtzusammenhangs#####
 ##Erstellung neuer detaillierterer Altersgruppierung in 5er Schritten
 al$age_rec2 <- cut(al$age, seq(from = 0, to = 110, by = 5))
 nal$age_rec2 <- cut(nal$age, seq(from = 0, to = 110, by = 5))
@@ -380,8 +377,7 @@ a <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summa
 b <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only nal")
 
 plot_grid(overall, a, b, ncol = 3, nrow = 1) # all plots together
-asd
-
+ggsave("./output/Overall_Zshg.png", width = 53, height = 30, units = "cm")
 
 ##Test for change in nal with sample size of 1300
 library(dplyr)
@@ -392,19 +388,31 @@ c <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summar
 d <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) +ggtitle("nal 1300 sample (same size as al)")
 
 plot_grid(c,d)
+ggsave("./output/Overall_Zshg.NAL_SampleVergleich.png", width = 53, height = 30, units = "cm")
 
 ##Comparison al normal with nal sample 1300
 e <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("al normal")
 f <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("nal 1300 sample")
 
 plot_grid(e,f)
+ggsave("./output/Overall_Zshg.AL_NAL_Vergleich.png", width = 53, height = 30, units = "cm")
 
-##Lebenszufriedenheit in 5er Altersgruppen
+##Clean up Workingspace
+rm(list=(letters[1:6]))
 
-par(mfrow=c(1,2))
-plot(al %>% filter(!is.na(bgp175)) %>%  group_by(age_rec2) %>% summarise(mean(bgp175)),ylim=c(4, 10), main="Lebenszufriedenheit über alle Altersklassen (Arbeitslose)")
-plot(nal %>% filter(!is.na(bgp175)) %>%  group_by(age_rec2) %>% summarise(mean(bgp175)),ylim=c(4, 10), main="Lebenszufriedenheit über alle Altersklassen (Arbeitslose)")
+#####Gesamtzusammenhang MW/Median Standardabweichung für 5er Gruppen#####
+al_da <- al %>% filter(!is.na(bgp175)) %>% group_by(age_rec2) %>% summarize(mean(bgp175),median(bgp175), sd(bgp175))
+nal_da  <- nal %>% filter(!is.na(bgp175)) %>% group_by(age_rec2) %>% summarize(mean(bgp175),median(bgp175), sd(bgp175))
 
+diff <- al_da[,2:4] - nal_da[,2:4]
+
+al_da <- cbind(al_da, nal_da[,2:4], diff)
+al_da
+
+
+
+
+#####Deskriptive Analyse (plots) der Drittvariablen LEBENSPHASENMODELL#####
 ####Prepare dataset for plotting (convertion to factors) ####
 ##Erstellung von sex als factor
 al$bgpsex <- as.factor(al$bgpsex)
