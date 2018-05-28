@@ -350,13 +350,7 @@ summary(nal$bgp175)
 # Kurtosis = Wie spitz ist Verteilung?, 0=normalgipflig, >0 steilgipflig, <0 flachgipflig
 
 
-library(ggplot2)
-##Lebenszufriedenheit ohne Altersgruppen
-par(mfrow=c(1,3))
-plot(data_all_wage %>% group_by(age) %>% summarise(mean(bgp175)),ylim=c(4,10), xlim=c(18,100), main="Lebenszufriedenheit ?ber alle Altersklassen (Arbeitslose UND Nicht-Arbeitslose")
-plot(data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175)),ylim=c(4, 10), xlim=c(18,100), main="Lebenszufriedenheit ?ber alle Altersklassen (Arbeitslose)")
-plot(data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp175)),ylim=c(4,10), xlim=c(18,100),main="Lebenszufriedenheit ?ber alle Altersklassen (Nicht-Arbeitslose")
-                                                                 
+                
 #data_all_wage$age_rec2 <- cut(data_all_wage$age, seq(from = 0, to = 110, by = 5))
 
 #####Deskriptive Analyse (plots) der Drittvariablen LEBENSPHASENMODELL#####
@@ -364,6 +358,52 @@ plot(data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp1
 ##Erstellung neuer detaillierterer Altersgruppierung in 5er Schritten
 al$age_rec2 <- cut(al$age, seq(from = 0, to = 110, by = 5))
 nal$age_rec2 <- cut(nal$age, seq(from = 0, to = 110, by = 5))
+
+library(ggplot2)
+##Lebenszufriedenheit ohne Altersgruppen
+library(cowplot)
+
+##Overall Trend age x bgp175
+overall <- ggplot(data_all_wage %>% group_by(age) %>% summarise(mean(bgp175)), aes(x = age, y = `mean(bgp175)`)) + geom_point() +
+  stat_smooth(method = 'lm', formula = y ~ poly(x,2), aes(colour = 'polynomial'), se= FALSE) +
+  theme_bw() + 
+  scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  scale_x_continuous (name = "Alter") +
+  scale_colour_brewer(name = 'Trendline', palette = 'Set2') +
+  ggtitle("overall") +
+  theme(legend.position="none")
+
+##Only AL
+a <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only al")
+
+##Only NAL
+b <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only nal")
+
+plot_grid(overall, a, b, ncol = 3, nrow = 1) # all plots together
+
+
+
+##Test for change in nal with sample size of 1300
+library(dplyr)
+sample1300 <- sample_n(data_all_wage[data_all_wage$lfs16!=6,], 1300)
+
+#Comparison of nal with 1300 and with 22000 sample size
+c <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp175))) +ggtitle ("nal unchanged sample (23000)")
+d <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) +ggtitle("nal 1300 sample (same size as al)")
+
+plot_grid(c,d)
+
+##Comparison al normal with nal sample 1300
+e <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("al normal")
+f <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("nal 1300 sample")
+
+plot_grid(e,f)
+
+##Lebenszufriedenheit in 5er Altersgruppen
+
+par(mfrow=c(1,2))
+plot(al %>% filter(!is.na(bgp175)) %>%  group_by(age_rec2) %>% summarise(mean(bgp175)),ylim=c(4, 10), main="Lebenszufriedenheit über alle Altersklassen (Arbeitslose)")
+plot(nal %>% filter(!is.na(bgp175)) %>%  group_by(age_rec2) %>% summarise(mean(bgp175)),ylim=c(4, 10), main="Lebenszufriedenheit über alle Altersklassen (Arbeitslose)")
 
 ####Prepare dataset for plotting (convertion to factors) ####
 ##Erstellung von sex als factor
