@@ -300,7 +300,7 @@ summary(nal)
 # write.xlsx(cor_al, "./cor_al.xlsx")
 
 
-##### --------- Deskriptive Statistik und bildliche Darstellung #####
+#####Deskriptive Statistik und bildliche Darstellung #####
 ##Nachfolgend einige Berechnungen zu den Kernvariablen "bgp175", "bgpsex", "age_rec" jeweils aufgegliedert für die Datensaetze "al" und "nal"
 
 
@@ -381,18 +381,18 @@ ggsave("./output/Overall_Zshg.png", width = 53, height = 30, units = "cm")
 
 ##Test for change in nal with sample size of 1300
 library(dplyr)
-sample1300 <- sample_n(data_all_wage[data_all_wage$lfs16!=6,], 1300)
+sample1300 <- sample_n(nal, 1300)
 
 #Comparison of nal with 1300 and with 22000 sample size
-c <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp175))) +ggtitle ("nal unchanged sample (23000)")
-d <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) +ggtitle("nal 1300 sample (same size as al)")
+c <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp175))) + ggtitle ("nal unchanged sample (23000)")
+d <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("nal 1300 sample (same size as al)")
 
 plot_grid(c,d)
 ggsave("./output/Overall_Zshg.NAL_SampleVergleich.png", width = 53, height = 30, units = "cm")
 
 ##Comparison al normal with nal sample 1300
 e <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("al normal")
-f <- overall %+% (sample1300 %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("nal 1300 sample")
+f <- overall %+% (sample1300 %>% filter(lfs16!=6, age <=65) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("nal 1300 sample")
 
 plot_grid(e,f)
 ggsave("./output/Overall_Zshg.AL_NAL_Vergleich.png", width = 53, height = 30, units = "cm")
@@ -410,10 +410,17 @@ al_da <- cbind(al_da, nal_da[,2:4], diff)
 al_da
 
 
+##Check for 1300 sample in nal --> Trend is same!
+al_da <- al %>% filter(!is.na(bgp175)) %>% group_by(age_rec2) %>% summarize(mean(bgp175),median(bgp175), sd(bgp175))
+nal_da  <- sample1300 %>% filter(!is.na(bgp175)) %>% group_by(age_rec2) %>% summarize(mean(bgp175),median(bgp175), sd(bgp175))
+
+diff <- al_da[,2:4] - nal_da[,2:4]
+al_da <- cbind(al_da, nal_da[,2:4], diff)
+al_da
 
 
 #####Deskriptive Analyse (plots) der Drittvariablen LEBENSPHASENMODELL#####
-####Prepare dataset for plotting (convertion to factors) ####
+####Prepare dataset for plotting (convertion to factors) ###
 ##Erstellung von sex als factor
 al$bgpsex <- as.factor(al$bgpsex)
 levels(al$bgpsex)[levels(al$bgpsex)=="1"] <- "m"
@@ -444,7 +451,7 @@ levels(nal$d1110716_rec)[levels(nal$d1110716_rec)=="1"] <- "with child"
 
 #convert ISCED to factor
 table(al$pgisced11_rec, useNA = "ifany")
-al[al$pgisced11_rec==-1,] <- NA
+al[al$pgisced11_rec==-1,"pgisced11_rec"] <- NA
 
 al$pgisced11_rec <- as.factor(al$pgisced11_rec) 
 
@@ -454,7 +461,7 @@ levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="2"] <- "highest (6-8)"
 
 table(nal$pgisced11_rec, useNA = "ifany")
 
-nal[nal$pgisced11_rec==-1,] <- NA
+nal[nal$pgisced11_rec==-1,"pgisced11_rec"] <- NA
 
 nal$pgisced11_rec <- as.factor(nal$pgisced11_rec) 
 
@@ -466,6 +473,22 @@ levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="2"] <- "highest (6-8)"
 al$al.p <- as.factor(al$al.p)
 levels(al$al.p)[levels(al$al.p)=="0"] <- "not unemp partner"
 levels(al$al.p)[levels(al$al.p)=="1"] <- "unemp partner"
+
+#Create Variable unemployment Experience (expue_rec)
+hist(al$expue16)
+summary(al$expue16)
+
+al %>% filter(!is.na(expue16)) %>% group_by(age_rec2) %>% summarize(mean(expue16))
+#al$expue_rec <- ifelse((al$expft16 == 0 & al$exppt16 == 0), NA, (al$expue16/ (al$expft16 + al$exppt16 + al$expue16)))
+al$expue_rec <- al$expue16/ (al$expft16 + al$exppt16 + al$expue16)
+
+#cut in quantiles (.0 - .33, - .66, - .1)
+al$expue_rec2 <- cut(al$expue_rec, breaks = c(quantile(al$expue_rec, c(0.33,0.66,1), na.rm = TRUE)), labels = c("low_expue","middle_expue","high_expue"))
+
+View(al[,c(28:30,45,46,23)])
+is.factor(al$expue_rec2)
+
+
 
 ###create dataframes for plots with life phase model####
 require(cowplot)
@@ -580,37 +603,46 @@ plot_grid(c,f, ncol = 2, nrow = 1) # plot life circumstances
 ggsave("./output/LifeCircumstances_5yearSTEPS.png", width = 53, height = 30, units = "cm")
 
 
-####Check AL specific control variables####
+###Check AL specific control variables####
 
-####Partner Arbeitslosigkeit
+###1 - Partner Arbeitslosigkeit
 
 ###Data overview shows: A lot of missing data, so plots might be hard to interpretate
 table(al$al.p, useNA = "ifany")
 
 al_plot5 <- al %>% filter(!is.na(al.p)) %>% group_by(age_rec2, al.p ) %>% summarise(mean(bgp175),sd(bgp175))
-al_plot5lp <- al %>% filter(!is.na(al.p)) %>% group_by(age_rec, al.p ) %>% summarise(mean(bgp175),sd(bgp175))
+#al_plot5lp <- al %>% filter(!is.na(al.p)) %>% group_by(age_rec, al.p ) %>% summarise(mean(bgp175),sd(bgp175))
 
 partner <- myplot2(al_plot5, al_plot5$al.p)
-partnerLP <- myplot(al_plot5lp,al_plot5lp$al.p)
+#partnerLP <- myplot(al_plot5lp,al_plot5lp$al.p)
 
-####Dauer der AL: longtime/shorttime
+###2 - Dauer der AL: longtime/shorttime
 table(al$longune, useNA = "ifany")
 
 al_plot6 <- al %>% filter(!is.na(longune)) %>% group_by(age_rec2, longune) %>% summarise(mean(bgp175),sd(bgp175))
-al_plot6lp <- al %>% filter(!is.na(longune)) %>% group_by(age_rec, longune) %>% summarise(mean(bgp175),sd(bgp175))
+#al_plot6lp <- al %>% filter(!is.na(longune)) %>% group_by(age_rec, longune) %>% summarise(mean(bgp175),sd(bgp175))
 
 duration <- myplot2(al_plot6, al_plot6$longune)
-durationLP <- myplot(al_plot6lp,al_plot6lp$longune)
+#durationLP <- myplot(al_plot6lp,al_plot6lp$longune)
 
-plot_grid(partner, partnerLP, duration, durationLP, ncol = 2, nrow = 2) # al specific variables
+
+###3 - Anteil der Arbeitslosigkeitsdauer an der dem Arbeitsmarkt zur Verfügung stehenden Gesamtzeit (s. al$expue_rec2)
+al_plot7 <- al %>% filter(!is.na(expue_rec2)) %>% group_by(age_rec2, expue_rec2) %>% summarise(mean(bgp175),sd(bgp175))
+exp <- myplot2(al_plot7, al_plot7$expue_rec2)
+
+
+
+plot_grid(partner, duration, exp, ncol = 3, nrow = ) # al specific variables
 ggsave("./output/AL.specific.variables_5yearSTEPS.png", width = 53, height = 30, units = "cm")
+
+
 
 ##clear workspace of created plots
 rm("al_plot", "al_plot1","al_plot2","al_plot3","al_plot4",       
    "al_plot5","al_plot5lp","al_plot6","al_plot6lp","a","b","c","d","e","f",              
    "data_all_merged", "data_all_wage","duration","durationLP",
    "nal_plot","nal_plot1","nal_plot2","nal_plot3",      
-   "nal_plot4","partner","partnerLP","x","y")
+   "nal_plot4","partner","partnerLP","x","y","exp","al_plot7")
 
 #####Andere deskriptive Statistik#####
 
@@ -654,9 +686,7 @@ shapiro.test(al$bgp175) #wenn signifikant, dann keine Normalverteilung, aber pro
 #   scale_x_discrete(name = "Lebensphasen",labels=c("lp1","lp2","lp3"))
 # 
 # detach(package:Rmisc, unload = TRUE)
-#####
-
-####  Regression for al ####
+#####Regression for al ####
 
 #Erstellen von contrasts, um unsere Hypothesen zu überprüfen (Hypothese)
 #Set contrast to group 2
@@ -688,7 +718,7 @@ round(tapply(al$bgp175, al$age_rec, mean, na.rm=TRUE), 2)
 
 summary(lm(bgp175 ~ pgisced11_rec + bgpsex_fac + migback_rec + d1110716_rec + longune  + al.p, data = al))
 
-#####---------------- ANOVA - first try --------------##########
+#####ANOVA first try --------------##########
 
 #1. Levene-Test auf Varianzhomogenitaet, sollte nicht signifikant sein
 #install.packages("Rcmdr")
@@ -802,7 +832,7 @@ lincon(alWide, tr = .1) # Unterschiede Gruppe 1-3 und 2-3, nicht aber 1-2
 mcppb20(alWide, tr = .1, crit = 0.5 ) # Unterschiede Gruppe 1-3 und 2-3, nicht aber 1-2
 
 #scheinbar ein Unterschied zwischen Gruppe 3 und Gruppe 1/2, aber kein Unterschied zwischen Gruppe 1 und Gruppe 2
-#Zusammenfassung Post-Hoc Tests #####
+#####Zusammenfassung Post-Hoc Tests #####
 #Alle Post-Hoc Tests haben selbes Ergebnis für Arbeitslose
 
 #####Post-Hoc Tests NAL#####
@@ -883,7 +913,7 @@ summary.lm(nalmodel_aov)
 
 
 
-#####  Regression for nal ##### 
+#####Regression for nal ##### 
 
 ##make sex to factor variable for dummy coding in regression
 nal$bgpsex_fac <- as.factor(nal$bgpsex) 
