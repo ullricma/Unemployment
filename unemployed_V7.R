@@ -365,7 +365,7 @@ overall <- ggplot(data_all_wage %>% group_by(age) %>% summarise(mean(bgp175)), a
   stat_smooth(method = 'lm', formula = y ~ poly(x,2), aes(colour = 'polynomial'), se= FALSE) +
   theme_bw() + 
   scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
-  scale_x_continuous (name = "Alter") +
+  scale_x_continuous (name = "Alter", limits = c(18,100), breaks = c(seq(20,100,10))) +
   scale_colour_brewer(name = 'Trendline', palette = 'Set2') +
   ggtitle("overall") +
   theme(legend.position="none")
@@ -381,7 +381,7 @@ ggsave("./output/Overall_Zshg.png", width = 53, height = 30, units = "cm")
 
 ##Test for change in nal with sample size of 1300
 library(dplyr)
-sample1300 <- sample_n(nal, 1300)
+sample1300 <- sample_n(data_all_wage[data_all_wage$lfs16!=6,], 1300)
 
 #Comparison of nal with 1300 and with 22000 sample size
 c <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>%group_by(age) %>% summarise(mean(bgp175))) + ggtitle ("nal unchanged sample (23000)")
@@ -396,6 +396,35 @@ f <- overall %+% (sample1300 %>% filter(lfs16!=6, age <=65) %>% group_by(age) %>
 
 plot_grid(e,f)
 ggsave("./output/Overall_Zshg.AL_NAL_Vergleich.png", width = 53, height = 30, units = "cm")
+
+
+##Overall plot LP####
+
+##5er Schritte (age_rec2)
+  
+i <-   ggplot(al %>%  group_by(age_rec2) %>% summarise(mean(bgp175)), aes(x = age_rec2, y = `mean(bgp175)`, group=1)) +
+    geom_point() +
+    geom_line() +
+    theme_bw() + 
+    scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+    scale_x_discrete (name = "Alter") + ggtitle("5er Schritte AL")
+
+ii <- i %+% (nal %>%  group_by(age_rec2) %>% summarise(mean(bgp175))) + ggtitle("5er Schritte NAL")
+
+##LP (age_rec)
+
+i2 <- ggplot(al %>%  group_by(age_rec) %>% summarise(mean(bgp175)), aes(x = age_rec, y = `mean(bgp175)`, group=1)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() + 
+  scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  scale_x_discrete (name = "Lebensphasen") + ggtitle("Lebensphasenmodell AL")
+
+ii2 <- i2 %+% (nal %>%  group_by(age_rec) %>% summarise(mean(bgp175))) + ggtitle("Lebensphasenmodell NAL")
+
+plot_grid(i,i2,ii,ii2, ncol = 2, nrow = 2)
+ggsave("./output/Overall_Zshg_LP_5er_Vergleich.png", width = 53, height = 30, units = "cm")
+
 
 ##Clean up Workingspace
 rm(list=(letters[1:6]))
@@ -545,7 +574,6 @@ plot_grid(a,d,b,e,x,y, ncol = 2, nrow = 3) # plot sociodemographic
 ggsave("./output/Sociodemographics_LP.png", width = 53, height = 30, units = "cm")
 plot_grid(c,f, ncol = 2, nrow = 1) # plot life circumstances
 ggsave("./output/LifeCircumstances_LP.png", width = 53, height = 30, units = "cm")
-
 
 ###create dataframes for plots, but this time in 5 year intervals (check whether we oversee effects due to granularity of data) ####
 
