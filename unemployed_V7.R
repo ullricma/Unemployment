@@ -380,7 +380,7 @@ a <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summa
 b <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only nal")
 
 plot_grid(overall, a, b, ncol = 3, nrow = 1) # all plots together
-
+asd
 
 
 ##Test for change in nal with sample size of 1300
