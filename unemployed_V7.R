@@ -763,8 +763,8 @@ library(pastecs); library(WRS); library(car)
 stat.desc(al$bgp175)
 stat.desc(nal$bgp175)
 
-leveneTest(al$bgp175, al$age_rec, center=mean) # al hat Varianzhomogenität (für mean und median)
-leveneTest(nal$bgp175, nal$age_rec, center=mean) # nal hat Varianzheterogenität (für mean und median)
+leveneTest(al$bgp175, al$age_rec, center=mean) # al hat Varianzhomogenität
+leveneTest(nal$bgp175, nal$age_rec, center=mean) # nal hat keine Varianzhomogenität 
 
 by(al$bgp175, al$age_rec, var)
 
@@ -959,16 +959,18 @@ library(mlogit)
 almodel_log <- mlogit(bgp175 ~ 1 | age_rec, data = al, reflevel = 1)
 
 ###Non-parametrischer Test####
-kruskal.test(bgp175 ~ age_rec ,data = al) #Signifikante Unterschiede vorhanden
-kruskal.test(bgp175 ~ age_rec ,data = nal) #Signifikante Unterschiede vorhanden
+kruskal.test(bgp175 ~ age_rec2 ,data = al) #Signifikante Unterschiede vorhanden
+kruskal.test(bgp175 ~ age_rec2 ,data = nal) #Signifikante Unterschiede vorhanden
 
 
 ##Erstelle Ranks zur Übersichtlichkeit
 al$ranks <- rank(al$bgp175)
-by(al$ranks, al$age_rec, mean)
+by(al$ranks, al$age_rec2, mean)
+
+table(al$age_rec2)
 
 nal$ranks <- rank(nal$bgp175)
-by(nal$ranks, nal$age_rec, mean)
+by(nal$ranks, nal$age_rec2, mean)
 
 
 ##Non-parametrischer Post-Hoc Test
@@ -981,22 +983,22 @@ by(nal$ranks, nal$age_rec, mean)
 # install.packages("pgirmess")
 library(pgirmess)
 
-kruskalmc(bgp175 ~ age_rec ,data = al) #Signifikante Unterschiede nur zwischen Gruppe 1-3 und 2-3, nicht aber für 1-2
+kruskalmc(bgp175 ~ age_rec2 ,data = al) #Signifikante Unterschiede nur zwischen Gruppe 1-3 und 2-3, nicht aber für 1-2
 
-kruskalmc(bgp175 ~ age_rec ,data = nal) # Signifikante Unterschiede zwischen allen Gruppen, ABER: Sieht so aus als wäre die kritischen Werte merkwürdig
+kruskalmc(bgp175 ~ age_rec2 ,data = nal) # Signifikante Unterschiede zwischen allen Gruppen, ABER: Sieht so aus als wäre die kritischen Werte merkwürdig
 
 ##repeat with smaller sample
 
-new_df <- nal %>% group_by(age_rec) %>% sample_n(500)
-table(new_df$age_rec)
+new_df <- nal %>% group_by(age_rec2) %>% sample_n(500)
+table(new_df$age_rec2)
 
-kruskal.test(bgp175 ~ age_rec ,data = new_df)
-kruskalmc(bgp175 ~ age_rec ,data = new_df)
+kruskal.test(bgp175 ~ age_rec2 ,data = new_df)
+kruskalmc(bgp175 ~ age_rec2 ,data = new_df)
 plot(density(new_df$bgp175))
 
 ##Frage: Wie können wir jetzt den Alterseffekt herausrechnen?
 
-a <- by(al$bgp175, al$age_rec, mean)
-b <- by(nal$bgp175, nal$age_rec, mean)
+a <- by(al$bgp175, al$age_rec2, mean)
+b <- by(nal$bgp175, nal$age_rec2, mean)
 
 a-b
