@@ -353,28 +353,28 @@ summary(nal$bgp175)
 
 #####Deskriptive Analyse (plots) des Gesamtzusammenhangs#####
 ##Erstellung neuer detaillierterer Altersgruppierung in 5er Schritten
-al$age_rec2 <- cut(al$age, seq(from = 0, to = 110, by = 5))
-nal$age_rec2 <- cut(nal$age, seq(from = 0, to = 110, by = 5))
+al$age_rec2 <- cut(al$age, seq(from = 15, to = 65, by = 5))
+nal$age_rec2 <- cut(nal$age, seq(from = 0, to = 80, by = 5))
 
 library(ggplot2)
 ##Lebenszufriedenheit ohne Altersgruppen
 library(cowplot)
 
 ##Overall Trend age x bgp175
-overall <- ggplot(data_all_wage %>% group_by(age) %>% summarise(mean(bgp175)), aes(x = age, y = `mean(bgp175)`)) + geom_point() +
+overall <- ggplot(data_all_wage %>% filter(age <= 80) %>%  group_by(age) %>% summarise(mean(bgp175)), aes(x = age, y = `mean(bgp175)`)) + geom_point() +
   stat_smooth(method = 'lm', formula = y ~ poly(x,2), aes(colour = 'polynomial'), se= FALSE) +
   theme_bw() + 
   scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
-  scale_x_continuous (name = "Alter", limits = c(18,100), breaks = c(seq(20,100,10))) +
+  scale_x_continuous (name = "Alter", limits = c(18,80), breaks = c(seq(20,80,10))) +
   scale_colour_brewer(name = 'Trendline', palette = 'Set2') +
   ggtitle("overall") +
   theme(legend.position="none")
 
 ##Only AL
-a <- overall %+% (data_all_wage %>% filter(lfs16==6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only al")
+a <- overall %+% (data_all_wage %>% filter(lfs16==6, age <= 80) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only al")
 
 ##Only NAL
-b <- overall %+% (data_all_wage %>% filter(lfs16!=6) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only nal")
+b <- overall %+% (data_all_wage %>% filter(lfs16!=6, age <= 80) %>% group_by(age) %>% summarise(mean(bgp175))) + ggtitle("only nal")
 
 plot_grid(overall, a, b, ncol = 3, nrow = 1) # all plots together
 ggsave("./output/Overall_Zshg.png", width = 53, height = 30, units = "cm")
@@ -410,6 +410,42 @@ i <-   ggplot(al %>%  group_by(age_rec2) %>% summarise(mean(bgp175)), aes(x = ag
     scale_x_discrete (name = "Alter") + ggtitle("5er Schritte AL")
 
 ii <- i %+% (nal %>%  group_by(age_rec2) %>% summarise(mean(bgp175))) + ggtitle("5er Schritte NAL")
+
+##5er Schritte (age_rec2 MIT STANDARDFEHLERN)
+
+###Several Error Bar Charts
+#library(Rmisc)
+
+##AL Group Only
+std <- function(x) sd(x)/sqrt(length(x))
+
+al_errorBar <- al %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175), se = std(bgp175))
+nal_errorBar <- nal %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175), se = std(bgp175))
+
+pd <- position_dodge(0.1) #move them .05 to the left and right
+
+##AL and NAL Group together
+result<-rbind(al_errorBar, nal_errorBar)
+###create new column for groups
+result$groups <- c(rep("al",10), rep("nal",10))
+result$groups <- factor(result$groups, levels= c("al", "nal"))
+is.factor(result$groups)
+
+
+##Both Groups in one chart
+ggplot(result, aes(x=age_rec2, y=mean, colour=groups, group=groups)) +
+  geom_errorbar(aes(ymin=mean-2*se, ymax=mean+2*se), width=.1, position=position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1)) +
+  geom_point(position=position_dodge(0.1)) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
+  scale_y_continuous(name = "Zufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  geom_text(aes(label = round(mean,2), y = mean - 0.2)) +
+  theme_bw()
+
+ggsave("./output/Overall_5er_Errorbar.png", width = 53, height = 30, units = "cm")
+
+
+
+
 
 ##LP (age_rec)
 
@@ -607,6 +643,8 @@ myplot2 <- function(df, var) {
     ggtitle (deparse(substitute(df)))
 }
 
+myplot()
+
 ##al plots
 
 a <- myplot2(al_plot[[1]], al_plot[[1]][[2]])
@@ -689,31 +727,7 @@ shapiro.test(al$bgp175) #wenn signifikant, dann keine Normalverteilung, aber pro
 #facet_wrap(~ age_rec, ncol = 3)
 
 ###Deskriptive Statistik für großen Zusammenhang
-###Several Error Bar Charts
-# library(Rmisc)
-# 
-# ##AL Group Only
-# al_errorBar <- summarySE(al, measurevar="bgp175", groupvars="age_rec")
-# pd <- position_dodge(0.1) # move them .05 to the left and right
-# ##NAL Group Only
-# nal_errorBar <- summarySE(nal, measurevar="bgp175", groupvars="age_rec")
-# 
-# ##AL and NAL Group together
-# result<-rbind(al_errorBar, nal_errorBar)
-# ###create new column for groups
-# result$groups <- c("al", "al", "al", "nal","nal","nal")
-# result$groups <- factor(result$groups, levels= c("al", "nal"))
-# is.factor(result$groups)
-# 
-# ##Both Groups in one chart
-# ggplot(result, aes(x=age_rec, y=bgp175, colour=groups, group=groups)) +
-#   geom_errorbar(aes(ymin=bgp175-ci, ymax=bgp175+ci), width=.1, position=pd) +
-#   geom_line(position=pd) +
-#   geom_point(position=pd) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
-#   scale_y_continuous(name = "Zufriedenheit", limits = c(1,10), breaks = c(1:10))+
-#   scale_x_discrete(name = "Lebensphasen",labels=c("lp1","lp2","lp3"))
-# 
-# detach(package:Rmisc, unload = TRUE)
+
 #####Regression for al ####
 
 #Erstellen von contrasts, um unsere Hypothesen zu überprüfen (Hypothese)
@@ -983,6 +997,8 @@ by(nal$ranks, nal$age_rec2, mean)
 # install.packages("pgirmess")
 library(pgirmess)
 
+al[age_rec2=="(70,75]",]
+
 kruskalmc(bgp175 ~ age_rec2 ,data = al) #Signifikante Unterschiede nur zwischen Gruppe 1-3 und 2-3, nicht aber für 1-2
 
 kruskalmc(bgp175 ~ age_rec2 ,data = nal) # Signifikante Unterschiede zwischen allen Gruppen, ABER: Sieht so aus als wäre die kritischen Werte merkwürdig
@@ -1002,3 +1018,19 @@ a <- by(al$bgp175, al$age_rec2, mean)
 b <- by(nal$bgp175, nal$age_rec2, mean)
 
 a-b
+
+colours <- c("AIT", "JR", "IHS")
+coords <- 
+
+
+plot(g, x) + 
+  
+  x <- list(layout,  node.size=0 , labels=True ,  , node.positions=coords)
+
+x <- c("AIT", "JR", "IHS","AIT") # Dein 120 großer Vektor
+
+y <- c("AIT","JR") # sollte man mit colnames bekommen
+
+z <- y[y%in%x] # Neuer Vektor: Welche Werte von y sind auch in x drin
+
+
