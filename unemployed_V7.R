@@ -88,6 +88,7 @@ data_all_ppfad <- raw_ppfad[, c("persnr", "migback")]
 #Zusammenf?gen data_all_merged mit Datensatz, wo "Anzahl Kinder HH" drin ist (data_all_pequiv)
 data_all_merged <- merge(data_all_merged, data_all_pequiv, by ="persnr",all.x = TRUE)
 table(data_all_merged$d1110716)
+names(data_all_merged)[names(data_all_merged)=="d1110716"] <- "child"
 
 #Zusammenf?gen data_all_merged mit Datensatz Variable Migrationshintergrund
 data_all_merged <- merge(data_all_merged, data_all_ppfad, by ="persnr",all.x = TRUE)
@@ -99,9 +100,9 @@ table(data_all_merged$migback_rec)
 table(data_all_merged$migback)
 9379+2018
 
-data_all_merged$d1110716_rec <- ifelse(data_all_merged$d1110716 == 0, "0","1")
-table(data_all_merged$d1110716_rec)
-table(data_all_merged$d1110716)
+data_all_merged$child_rec <- ifelse(data_all_merged$child == 0, "0","1")
+table(data_all_merged$child_rec)
+table(data_all_merged$child)
 4734+4573+2173+880+302+100+32+19+6+2+2 
 
 ##### Erstellung Variable AL PartnerIn
@@ -112,7 +113,6 @@ names(data_all_test)[names(data_all_test)=="lfs16"] <- "lfs16.p"
 names(data_all_test)
 
 data_all_test <- data_all_test %>% mutate_each(funs(replace(., .<0, NA)))
-data_all_test2 <- data_all_test2 %>% mutate_each(funs(replace(., .<0, NA)))
 
 data_all_merged <- merge(data_all_merged, data_all_test, by.x = "persnr", by.y ="partnr16.p",all.x = TRUE)
 data_all_merged$al.p <- ifelse(data_all_merged$lfs16.p == 6, "1","0")
@@ -247,10 +247,12 @@ names(al_ids)[names(al_ids)=="2016"] <- "lfs16"
 
 ##create new variable: longtime/shorttime unemployed (longune)
 
-al_ids$longune <- ifelse(al_ids$lfs15!=6,"short","long")
+al_ids$longune <- ifelse(al_ids$lfs15!=6,0,1)
 table(al_ids$longune, useNA = "ifany")
-al_ids$longune <- as.factor(al_ids$longune)
-str(al_ids$longune)
+class(al_ids$longune)
+al_ids$longune <- factor(al_ids$longune, levels = c(0,1), labels = c("short","long"))
+str(al_ids$longune_rec)
+
 
 ###Merge Variables to al dataset
 al <- merge(al, al_ids[,c("persnr","longune","pgisced11")], by.x = "persnr", by.y="persnr")
@@ -269,6 +271,82 @@ nal$pgisced11_rec <- recode(nal$pgisced11, "1=0; 2=0; 3=1; 4=1; 5=1; 6=2; 7=2; 8
 rm("raw_bgpkal","raw_p","raw_pequiv","raw_pgen", "raw_ppfad","data_all_p","data_all_pequiv", 
    "data_all_pgen", "data_all_ppfad", "data_all_test","al_ids","nal_ids","pgenlong","lfs1516","isced16")
 
+##Erstellung neuer detaillierterer Altersgruppierung in 5er Schritten
+al$age_rec2 <- cut(al$age, seq(from = 15, to = 65, by = 5))
+nal$age_rec2 <- cut(nal$age, seq(from = 15, to = 65, by = 5))
+
+####Prepare dataset for plotting (convertion to factors) ###
+##Erstellung von sex als factor
+al$bgpsex <- as.factor(al$bgpsex)
+levels(al$bgpsex)[levels(al$bgpsex)=="1"] <- "m"
+levels(al$bgpsex)[levels(al$bgpsex)=="2"] <- "w"
+
+nal$bgpsex <- as.factor(nal$bgpsex)
+levels(nal$bgpsex)[levels(nal$bgpsex)=="1"] <- "m"
+levels(nal$bgpsex)[levels(nal$bgpsex)=="2"] <- "w"
+
+#convert migback_rec to factor
+al$migback_rec <- as.factor(al$migback_rec)
+levels(al$migback_rec)[levels(al$migback_rec)=="0"] <- "no mig"
+levels(al$migback_rec)[levels(al$migback_rec)=="1"] <- "with mig"
+
+nal$migback_rec <- as.factor(nal$migback_rec)
+levels(nal$migback_rec)[levels(nal$migback_rec)=="0"] <- "no mig"
+levels(nal$migback_rec)[levels(nal$migback_rec)=="1"] <- "with mig"
+
+#convert children to factor (todo: variable has to be renamed at some point)
+
+al$child_rec <-  as.factor(al$child_rec)
+levels(al$child_rec )[levels(al$child_rec)=="0"] <- "no child"
+levels(al$child_rec)[levels(al$child_rec)=="1"] <- "with child"
+
+nal$child_rec <-  as.factor(nal$child_rec)
+levels(nal$child_rec )[levels(nal$child_rec)=="0"] <- "no child"
+levels(nal$child_rec)[levels(nal$child_rec)=="1"] <- "with child"
+
+#convert ISCED to factor
+table(al$pgisced11_rec, useNA = "ifany")
+al[al$pgisced11_rec==-1,"pgisced11_rec"] <- NA
+
+al$pgisced11_rec <- as.factor(al$pgisced11_rec) 
+
+levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="0"] <- "lowest (1-2)"
+levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="1"] <- "middle (3-5)"
+levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="2"] <- "highest (6-8)"
+
+table(nal$pgisced11_rec, useNA = "ifany")
+
+nal[nal$pgisced11_rec==-1,"pgisced11_rec"] <- NA
+
+nal$pgisced11_rec <- as.factor(nal$pgisced11_rec) 
+
+levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="0"] <- "lowest (1-2)"
+levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="1"] <- "middle (3-5)"
+levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="2"] <- "highest (6-8)"
+
+#convert AL of partner to factor
+al$al.p <- as.factor(al$al.p)
+levels(al$al.p)[levels(al$al.p)=="0"] <- "not unemp partner"
+levels(al$al.p)[levels(al$al.p)=="1"] <- "unemp partner"
+
+nal$al.p <- as.factor(nal$al.p)
+levels(nal$al.p)[levels(nal$al.p)=="0"] <- "not unemp partner"
+levels(nal$al.p)[levels(nal$al.p)=="1"] <- "unemp partner"
+
+#Create Variable unemployment Experience (expue_rec)
+hist(al$expue16)
+summary(al$expue16)
+
+al %>% filter(!is.na(expue16)) %>% group_by(age_rec2) %>% summarize(mean(expue16))
+#al$expue_rec <- ifelse((al$expft16 == 0 & al$exppt16 == 0), NA, (al$expue16/ (al$expft16 + al$exppt16 + al$expue16)))
+al$expue_rec <- al$expue16/ (al$expft16 + al$exppt16 + al$expue16)
+
+#cut in quantiles (.0 - .33, - .66, - .1)
+al$expue_rec2 <- cut(al$expue_rec, breaks = c(quantile(al$expue_rec, c(0,0.33,0.66,1), na.rm = TRUE)), labels = c("low_expue","middle_expue","high_expue"))
+
+View(al[,c(28:30,45,46,23)])
+is.factor(al$expue_rec2)
+
 ##
 summary(al)
 summary(nal)
@@ -277,27 +355,6 @@ summary(nal)
 # Zusammenfassung der Stichprobe
 # al:   1256  Arbeitslose Personen, die jünger sind als 66 Jahre
 # nal:  22893 Nicht-Arbeitslose Personen, die jünger sind als 66 Jahre
-
-#####------------- Indexkonstruktion Life Satisfaction ---------######
-
-
-#####-------------- Standardisierung (Z-Scores) ----------------#######
-# al$bgp175_z <- scale(al$bgp175)
-# nal$bgp175_z <- scale(nal$bgp175)
-# hist(al$bgp175_z)
-# hist(nal$bgp175_z)
-#####Inter-Item-Korrelationsmatrix#####
-# library(corrr)
-# ##Zeige Spaltennummern
-# View(colnames(al))
-# ##Korrelationsmatrix für alle Items der Batterie "Lebenszufriedenheit" bei Arbeitslosen
-# cor_al <- correlate(al[,c(11:22)], use="complete.obs")
-# ##Korrelationsmatrix für alle Items der Batterie "Lebenszufriedenheit" bei Arbeitslosen
-# cor_nal <- correlate(nal[,c(11:22)], use="complete.obs")
-# cor_ana <- cor_al-cor_nal
-# ##
-# library(xlsx)
-# write.xlsx(cor_al, "./cor_al.xlsx")
 
 
 #####Deskriptive Statistik und bildliche Darstellung #####
@@ -343,18 +400,56 @@ summary(nal$bgp175)
 
 ###etwas ausfuehrlichere Statistiken 
 # install.packages("fBasics")
-# library(fBasics)
-# basicStats(al$bgp175)
-# basicStats(nal$bgp175)
+library(fBasics)
+
+png("./output/Lebenszufriedenheit_AL_NAL.png")
+par(mfrow=c(1,2))
+hist(al$bgp175, main = "AL Lebenszufriedenheit")
+hist(nal$bgp175, breaks = c(0:10), main = "NAL Lebenszufriedenheit")
+dev.off()
+
+#AL Lebenszufriedenheit
+round(basicStats(al$bgp175),2)
+#NAL Lebenszufriedenheit
+round(basicStats(nal$bgp175),2)
+
+
+png("./output/hist_Lebensphasen_5erGruppen.png")
+par(mfrow=c(2,2))
+
+barplot(table(al$age_rec), main = "AL Lebensphasen")
+
+
+barplot(table(nal$age_rec), main = "NAL Lebensphasen")
+
+
+barplot(table(al$age_rec2), main = "AL 5er Altersgruppen")
+
+
+barplot(table(nal$age_rec2), main = "NAL 5er Altersgruppen")
+dev.off()
+
+
+#AL Lebensphasen
+table(al$age_rec)
+#NAL Lebensphasen
+table(nal$age_rec)
+#AL 5er Altersgruppen
+table(al$age_rec2)
+#NAL 5er Altersgruppen
+table(nal$age_rec2)
+
+
+
+
+
 # skewness = Schiefe, neg --> rechssteil/linksschief/nach rechts geneigt; pos --> linkssteil/rechtsschief/nach links geneigt
 # Kurtosis = Wie spitz ist Verteilung?, 0=normalgipflig, >0 steilgipflig, <0 flachgipflig
 
 #data_all_wage$age_rec2 <- cut(data_all_wage$age, seq(from = 0, to = 110, by = 5))
 
 #####Deskriptive Analyse (plots) des Gesamtzusammenhangs#####
-##Erstellung neuer detaillierterer Altersgruppierung in 5er Schritten
-al$age_rec2 <- cut(al$age, seq(from = 15, to = 65, by = 5))
-nal$age_rec2 <- cut(nal$age, seq(from = 0, to = 80, by = 5))
+
 
 library(ggplot2)
 ##Lebenszufriedenheit ohne Altersgruppen
@@ -397,6 +492,24 @@ f <- overall %+% (sample1300 %>% filter(lfs16!=6, age <=65) %>% group_by(age) %>
 plot_grid(e,f)
 ggsave("./output/Overall_Zshg.AL_NAL_Vergleich.png", width = 53, height = 30, units = "cm")
 
+##LP (age_rec)
+
+i2 <- ggplot(al %>%  group_by(age_rec) %>% summarise(mean(bgp175)), aes(x = age_rec, y = `mean(bgp175)`, group=1)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() + 
+  scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  scale_x_discrete (name = "Lebensphasen") + ggtitle("Lebensphasenmodell AL")
+
+ii2 <- i2 %+% (nal %>%  group_by(age_rec) %>% summarise(mean(bgp175))) + ggtitle("Lebensphasenmodell NAL")
+
+plot_grid(i,i2,ii,ii2, ncol = 2, nrow = 2)
+ggsave("./output/Overall_Zshg_LP_5er_Vergleich.png", width = 53, height = 30, units = "cm")
+
+
+##Clean up Workingspace
+rm(list=(letters[1:6]))
+
 
 ##Overall plot LP####
 
@@ -422,7 +535,6 @@ std <- function(x) sd(x)/sqrt(length(x))
 al_errorBar <- al %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175), se = std(bgp175))
 nal_errorBar <- nal %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175), se = std(bgp175))
 
-pd <- position_dodge(0.1) #move them .05 to the left and right
 
 ##AL and NAL Group together
 result<-rbind(al_errorBar, nal_errorBar)
@@ -443,27 +555,172 @@ ggplot(result, aes(x=age_rec2, y=mean, colour=groups, group=groups)) +
 
 ggsave("./output/Overall_5er_Errorbar.png", width = 53, height = 30, units = "cm")
 
+####Bootstrapping for new Plots####
+library(boot)
+library(ggplot2)
+library(cowplot)
+
+#Drop columns from a list
+#Y <- lapply(seq_along(df), function(x) as.data.frame(df[[x]])[, c("bgp175","bgpsex","age_rec2")])
+#list2env(Y, envir = .GlobalEnv)
+bootmean <- function(x,i) {
+  mean(x[i])
+}
+
+# boot1 <- boot(a$bgp175, bootmean, R=1000)
+# boot1ci <- boot.ci(boot1, conf=0.95, type = "bca")
+
+df <- split(al, al$age_rec2)
+boot_v1_al <- lapply(seq_along(df), function(x) boot(df[[x]][["bgp175"]],bootmean, R=3000))
+bootci_v1 <- lapply(seq_along(boot_v1_al), function(x) boot.ci(boot_v1_al[[x]], conf=0.95, type = "bca"))
+
+#new <- lapply(seq_along(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+#only take confidence intervals from place 4:5 in list (with sapply transform to matrix)
+ci <- sapply(seq_along(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+##get data frame for age_rec2
+al_errorBar <- al %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175))
+
+#add confidence intervals to existing dataframe 
+al_errorBar$ci1 <- ci[1,1:10]
+al_errorBar$ci2 <- ci[2,1:10]
+
+##Plot only for AL with bootstrapped confidence intervals
+
+boot_al <- ggplot(al_errorBar, aes(x=age_rec2, y=mean, group=1)) +
+            geom_errorbar(aes(ymin=ci1, ymax=ci2), width=.1, position=position_dodge(0.1)) +
+            geom_line(position=position_dodge(0.1)) +
+            geom_point(position=position_dodge(0.1)) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
+            scale_y_continuous(name = "Zufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+            geom_text(aes(label = round(mean,1), y = mean - 0.2)) +
+            theme_bw() +
+            ggtitle("AL - bootstrapped confidence intervalls (3000 Samples)")
+
+ggsave("./output/AL_Bootstrapped_Overall_5er_Errorbar.png", width = 53, height = 30, units = "cm")
+
+
+#######AL Plot for Sex
+
+dfsex <- split(al, list(al$age_rec2, al$bgpsex))
+boot_v1sex <- lapply(seq_along(dfsex), function(x) boot(dfsex[[x]][["bgp175"]],bootmean, R=3000))
+bootci_v1sex <- lapply(seq_along(boot_v1sex), function(x) boot.ci(boot_v1sex[[x]], conf=0.95, type = "bca"))
+
+#new <- lapply(seq_along(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+#only take confidence intervals from place 4:5 in list (with sapply transform to matrix)
+ci <- sapply(seq_along(bootci_v1sex), function(x) bootci_v1sex[[x]][[4]][4:5])
+
+##get data frame for age_rec2 and sex
+al_sex_errorBar <- al %>% group_by(age_rec2, bgpsex) %>% summarise(mean = mean(bgp175)) %>% arrange(bgpsex, age_rec2)
+
+#add confidence intervals to existing dataframe 
+al_sex_errorBar$ci1 <- ci[1,1:20]
+al_sex_errorBar$ci2 <- ci[2,1:20]
 
 
 
+boot_alsex <- ggplot(al_sex_errorBar, aes(x=age_rec2, y=mean, group=bgpsex, colour = bgpsex)) +
+              geom_errorbar(aes(ymin=ci1, ymax=ci2), width=.1, position=position_dodge(0.1)) +
+              geom_line(position=position_dodge(0.1), size=1) +
+              geom_point(position=position_dodge(0.1)) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
+              scale_y_continuous(name = "Zufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+              geom_text(aes(label = round(mean,1), y = mean - 0.2)) +
+              theme_bw() + 
+              ggtitle("AL - Lebenszufriedenheit nach Altersgruppen Männlich/Weiblich")
 
-##LP (age_rec)
+ggsave("./output/AL_Bootstrapped_LZ_Altersgruppen_Sex.png", width = 53, height = 30, units = "cm")
 
-i2 <- ggplot(al %>%  group_by(age_rec) %>% summarise(mean(bgp175)), aes(x = age_rec, y = `mean(bgp175)`, group=1)) +
-  geom_point() +
-  geom_line() +
+
+####
+##Repeat Bootstrapped Method for NAL group
+####
+
+df <- split(nal, nal$age_rec2)
+boot_v1 <- lapply(seq_along(df), function(x) boot(df[[x]][["bgp175"]],bootmean, R=3000))
+bootci_v1 <- lapply(seq_along(boot_v1), function(x) boot.ci(boot_v1[[x]], conf=0.95, type = "bca"))
+
+#new <- lapply(seq_nalong(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+#only take confidence intervnals from place 4:5 in list (with sapply transform to matrix)
+ci <- sapply(seq_along(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+##get data frame for age_rec2
+nal_errorBar <- nal %>% group_by(age_rec2) %>% summarise(mean = mean(bgp175))
+
+#add confidence intervnals to existing dataframe 
+nal_errorBar$ci1 <- ci[1,1:10]
+nal_errorBar$ci2 <- ci[2,1:10]
+
+##Plot only for nal with bootstrapped confidence intervnals
+
+boot_nal <- ggplot(nal_errorBar, aes(x=age_rec2, y=mean, group=1)) +
+  geom_errorbar(aes(ymin=ci1, ymax=ci2), width=.1, position=position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1)) +
+  geom_point(position=position_dodge(0.1)) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
+  scale_y_continuous(name = "Zufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  geom_text(aes(label = round(mean,1), y = mean - 0.2)) +
+  theme_bw() +
+  ggtitle("NAL - bootstrapped confidence intervalls (3000 Samples)")
+
+ggsave("./output/NAL_Bootstrapped_Overall_5er_Errorbar.png", width = 53, height = 30, units = "cm")
+
+
+#######NAL Plot for Sex
+dfsex <- split(nal[,c("age_rec2","bgpsex","bgp175")], list(nal$age_rec2, nal$bgpsex))
+boot_v1sex <- lapply(seq_along(dfsex), function(x) boot(dfsex[[x]][["bgp175"]],bootmean, R=3000))
+bootci_v1sex <- lapply(seq_along(boot_v1sex), function(x) boot.ci(boot_v1sex[[x]], conf=0.95, type = "bca"))
+
+#new <- lapply(seq_nalong(bootci_v1), function(x) bootci_v1[[x]][[4]][4:5])
+
+#only take confidence intervnals from place 4:5 in list (with sapply transform to matrix)
+ci <- sapply(seq_along(bootci_v1sex), function(x) bootci_v1sex[[x]][[4]][4:5])
+
+##get data frame for age_rec2 and sex
+nal_sex_errorBar <- nal %>% group_by(age_rec2, bgpsex) %>% summarise(mean = mean(bgp175)) %>% arrange(bgpsex, age_rec2)
+
+#add confidence intervnals to existing dataframe 
+nal_sex_errorBar$ci1 <- ci[1,1:20]
+nal_sex_errorBar$ci2 <- ci[2,1:20]
+
+boot_nalsex <- ggplot(nal_sex_errorBar, aes(x=age_rec2, y=mean, group=bgpsex, colour = bgpsex)) +
+  geom_errorbar(aes(ymin=ci1, ymax=ci2), width=.1, position=position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1), size=1) +
+  geom_point(position=position_dodge(0.1)) + xlab("Lebensphasen") + ylab("Zufriedenheit 1-10") +
+  scale_y_continuous(name = "Zufriedenheit", limits = c(5,10), breaks = c(5:10)) +
+  geom_text(aes(label = round(mean,1), y = mean - 0.2)) +
   theme_bw() + 
-  scale_y_continuous (name = "Lebenszufriedenheit", limits = c(5,10), breaks = c(5:10)) +
-  scale_x_discrete (name = "Lebensphasen") + ggtitle("Lebensphasenmodell AL")
+  ggtitle("NAL - Lebenszufriedenheit nach Altersgruppen Männlich/Weiblich")
 
-ii2 <- i2 %+% (nal %>%  group_by(age_rec) %>% summarise(mean(bgp175))) + ggtitle("Lebensphasenmodell NAL")
-
-plot_grid(i,i2,ii,ii2, ncol = 2, nrow = 2)
-ggsave("./output/Overall_Zshg_LP_5er_Vergleich.png", width = 53, height = 30, units = "cm")
+ggsave("./output/NAL_Bootstrapped_LZ_naltersgruppen_Sex.png", width = 53, height = 30, units = "cm")
 
 
-##Clean up Workingspace
-rm(list=(letters[1:6]))
+plot_grid(boot_al, boot_nal, boot_alsex, boot_nalsex, ncol =2, nrow = 2)
+ggsave("./output/AL_NAL_Bootstrap_vergleich.png", width = 53, height = 30, units = "cm")
+
+
+####DIFFERENZ DER MITTELWERTE
+
+bootdif_al <- lapply(seq_along(boot_v1_al), function(x) boot_v1_al[[x]][[2]])
+bootdif_nal <- lapply(seq_along(boot_v1), function(x) boot_v1[[x]][[2]])
+
+bootdif <- lapply(1:10, function(x) bootdif_al[[x]]-bootdif_nal[[x]])
+
+class(bootdif[[1]])
+
+bootdif_mean <- lapply(seq_along(bootdif), function(x) boot(bootdif[[x]],bootmean, R=3000))
+bootdif_ci <- lapply(seq_along(bootdif_mean), function(x) boot.ci(bootdif_mean[[x]], conf=0.95, type = "bca"))
+
+bootdif_vec <- bootdif_ci[[4]][[4]][4:5]
+
+###Tidy up Environment
+ls()
+rm(list=c("al_errorBar",      "al_sex_errorBar",  "boot_al",          "boot_alsex",       "boot_nal",        
+          "boot_nalsex",     "boot_v1" ,         "boot_v1_al" ,      "boot_v1sex"    ,   "bootci_v1"    ,    "bootci_v1sex" ,   
+          "bootdif"  ,        "bootdif_al"   ,    "bootdif_ci"  ,     "bootdif_mean"    , "bootdif_nal"  ,    "bootmean" ,       
+          "ci"    ,           "data_all_merged" , "data_all_wage" ,   "df"   ,            "dfsex" ,                      
+          "nal_errorBar" ,    "nal_sex_errorBar"))
+
 
 #####Gesamtzusammenhang MW/Median Standardabweichung für 5er Gruppen#####
 al_da <- al %>% filter(!is.na(bgp175)) %>% group_by(age_rec2) %>% summarize(mean(bgp175),median(bgp175), sd(bgp175))
@@ -484,77 +741,6 @@ al_da <- cbind(al_da, nal_da[,2:4], diff)
 al_da
 
 
-#####Deskriptive Analyse (plots) der Drittvariablen LEBENSPHASENMODELL#####
-####Prepare dataset for plotting (convertion to factors) ###
-##Erstellung von sex als factor
-al$bgpsex <- as.factor(al$bgpsex)
-levels(al$bgpsex)[levels(al$bgpsex)=="1"] <- "m"
-levels(al$bgpsex)[levels(al$bgpsex)=="2"] <- "w"
-
-nal$bgpsex <- as.factor(nal$bgpsex)
-levels(nal$bgpsex)[levels(nal$bgpsex)=="1"] <- "m"
-levels(nal$bgpsex)[levels(nal$bgpsex)=="2"] <- "w"
-
-#convert migback_rec to factor
-al$migback_rec <- as.factor(al$migback_rec)
-levels(al$migback_rec)[levels(al$migback_rec)=="0"] <- "no mig"
-levels(al$migback_rec)[levels(al$migback_rec)=="1"] <- "with mig"
-
-nal$migback_rec <- as.factor(nal$migback_rec)
-levels(nal$migback_rec)[levels(nal$migback_rec)=="0"] <- "no mig"
-levels(nal$migback_rec)[levels(nal$migback_rec)=="1"] <- "with mig"
-
-#convert children to factor (todo: variable has to be renamed at some point)
-
-al$d1110716_rec <-  as.factor(al$d1110716_rec)
-levels(al$d1110716_rec )[levels(al$d1110716_rec)=="0"] <- "no child"
-levels(al$d1110716_rec)[levels(al$d1110716_rec)=="1"] <- "with child"
-
-nal$d1110716_rec <-  as.factor(nal$d1110716_rec)
-levels(nal$d1110716_rec )[levels(nal$d1110716_rec)=="0"] <- "no child"
-levels(nal$d1110716_rec)[levels(nal$d1110716_rec)=="1"] <- "with child"
-
-#convert ISCED to factor
-table(al$pgisced11_rec, useNA = "ifany")
-al[al$pgisced11_rec==-1,"pgisced11_rec"] <- NA
-
-al$pgisced11_rec <- as.factor(al$pgisced11_rec) 
-
-levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="0"] <- "lowest (1-2)"
-levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="1"] <- "middle (3-5)"
-levels(al$pgisced11_rec)[levels(al$pgisced11_rec)=="2"] <- "highest (6-8)"
-
-table(nal$pgisced11_rec, useNA = "ifany")
-
-nal[nal$pgisced11_rec==-1,"pgisced11_rec"] <- NA
-
-nal$pgisced11_rec <- as.factor(nal$pgisced11_rec) 
-
-levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="0"] <- "lowest (1-2)"
-levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="1"] <- "middle (3-5)"
-levels(nal$pgisced11_rec)[levels(nal$pgisced11_rec)=="2"] <- "highest (6-8)"
-
-#convert AL of partner to factor
-al$al.p <- as.factor(al$al.p)
-levels(al$al.p)[levels(al$al.p)=="0"] <- "not unemp partner"
-levels(al$al.p)[levels(al$al.p)=="1"] <- "unemp partner"
-
-#Create Variable unemployment Experience (expue_rec)
-hist(al$expue16)
-summary(al$expue16)
-
-al %>% filter(!is.na(expue16)) %>% group_by(age_rec2) %>% summarize(mean(expue16))
-#al$expue_rec <- ifelse((al$expft16 == 0 & al$exppt16 == 0), NA, (al$expue16/ (al$expft16 + al$exppt16 + al$expue16)))
-al$expue_rec <- al$expue16/ (al$expft16 + al$exppt16 + al$expue16)
-
-#cut in quantiles (.0 - .33, - .66, - .1)
-al$expue_rec2 <- cut(al$expue_rec, breaks = c(quantile(al$expue_rec, c(0.33,0.66,1), na.rm = TRUE)), labels = c("low_expue","middle_expue","high_expue"))
-
-View(al[,c(28:30,45,46,23)])
-is.factor(al$expue_rec2)
-
-
-
 ###create dataframes for plots with life phase model####
 require(cowplot)
 #1 - sex
@@ -566,8 +752,8 @@ al_plot2 <- al %>% filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, migback_r
 nal_plot2 <- nal %>% filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, migback_rec) %>% summarise(mean(bgp175),sd(bgp175))
 
 #3 - Children
-al_plot3 <- al %>%  filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, d1110716_rec ) %>% summarise(mean(bgp175),sd(bgp175))
-nal_plot3 <- nal %>%  filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, d1110716_rec) %>% summarise(mean(bgp175),sd(bgp175))
+al_plot3 <- al %>%  filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, child_rec ) %>% summarise(mean(bgp175),sd(bgp175))
+nal_plot3 <- nal %>%  filter(!is.na(pgisced11_rec)) %>% group_by(age_rec, child_rec) %>% summarise(mean(bgp175),sd(bgp175))
 
 #4 - ISCED
 al_plot4 <- al %>% filter(!is.na(pgisced11_rec)) %>%group_by(age_rec, pgisced11_rec) %>% summarise(mean(bgp175),sd(bgp175))
@@ -622,8 +808,8 @@ al_plot2 <- al %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, migback
 nal_plot2 <- nal %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, migback_rec) %>% summarise(mean(bgp175),sd(bgp175))
 
 #3 - Children
-al_plot3 <- al %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, d1110716_rec ) %>% summarise(mean(bgp175),sd(bgp175))
-nal_plot3 <- nal %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, d1110716_rec) %>% summarise(mean(bgp175),sd(bgp175))
+al_plot3 <- al %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, child_rec ) %>% summarise(mean(bgp175),sd(bgp175))
+nal_plot3 <- nal %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, child_rec) %>% summarise(mean(bgp175),sd(bgp175))
 
 #4 - ISCED
 al_plot4 <- al %>% filter(!is.na(pgisced11_rec)) %>%  group_by(age_rec2, pgisced11_rec) %>% summarise(mean(bgp175),sd(bgp175))
@@ -740,14 +926,14 @@ almodel_regcon <- lm(bgp175 ~ age_rec + bgpsex_fac, data = al)
 summary(almodel_regcon)
 
 ##make sex to factor variable for dummy coding in regression
-al$bgpsex_fac <- as.factor(al$bgpsex) 
+al$bgpsex_fac <- as.factor(al$bgpsex)
 is.factor(al$bgpsex_fac)
 table(al$bgpsex, al$bgpsex_fac)
 
 
 ##Different contrasts: Group 1 as baseline
 contrasts(al$age_rec) <- contr.treatment(3, base = 1)
-almodel_regcon <- lm(bgp175 ~ age_rec + bgpsex_fac +migback_rec+ d1110716_rec, data = al)
+almodel_regcon <- lm(bgp175 ~ age_rec + bgpsex_fac +migback_rec+ child_rec, data = al)
 summary(almodel_regcon)
 
 almodel_regcon2 <- lm(bgp175 ~ age, data = al)
@@ -758,7 +944,7 @@ round(tapply(al$bgp175, al$age_rec, mean, na.rm=TRUE), 2)
 
 ###Regression only control variables####
 
-summary(lm(bgp175 ~ pgisced11_rec + bgpsex_fac + migback_rec + d1110716_rec + longune  + al.p, data = al))
+summary(lm(bgp175 ~ pgisced11_rec + bgpsex + migback_rec + child_rec + longune  + al.p, data = al))
 
 #####ANOVA first try --------------##########
 
@@ -1017,20 +1203,276 @@ plot(density(new_df$bgp175))
 a <- by(al$bgp175, al$age_rec2, mean)
 b <- by(nal$bgp175, nal$age_rec2, mean)
 
-a-b
-
-colours <- c("AIT", "JR", "IHS")
-coords <- 
 
 
-plot(g, x) + 
-  
-  x <- list(layout,  node.size=0 , labels=True ,  , node.positions=coords)
 
-x <- c("AIT", "JR", "IHS","AIT") # Dein 120 großer Vektor
+###Bootstrapping
 
-y <- c("AIT","JR") # sollte man mit colnames bekommen
+#####Garbage?
+########-------------- Standardisierung (Z-Scores) ----------------#######
+# al$bgp175_z <- scale(al$bgp175)
+# nal$bgp175_z <- scale(nal$bgp175)
+# hist(al$bgp175_z)
+# hist(nal$bgp175_z)
+#####Inter-Item-Korrelationsmatrix#####
+# library(corrr)
+# ##Zeige Spaltennummern
+# View(colnames(al))
+# ##Korrelationsmatrix für alle Items der Batterie "Lebenszufriedenheit" bei Arbeitslosen
+# cor_al <- correlate(al[,c(11:22)], use="complete.obs")
+# ##Korrelationsmatrix für alle Items der Batterie "Lebenszufriedenheit" bei Arbeitslosen
+# cor_nal <- correlate(nal[,c(11:22)], use="complete.obs")
+# cor_ana <- cor_al-cor_nal
+# ##
+# library(xlsx)
+# write.xlsx(cor_al, "./cor_al.xlsx")
 
-z <- y[y%in%x] # Neuer Vektor: Welche Werte von y sind auch in x drin
+#####Regression Final #####
+setdiff(names(al), names(nal))
+dat <- bind_rows(al,nal)
+dat <- dat[,c(-12:-22)]
+
+##Construction of unemployment specific variables
+dat$al <- ifelse(dat$lfs16==6,1,0)
+dat$al_mlc <- with(dat,ifelse(age_rec2 %in% c("(45,50]","(50,55]","(55,60]") & al == 1 ,1,0))
+
+table(dat$age_rec2,dat$al,dat$al_mlc)
+class(dat$bgpsex)
+class(dat$migback_rec)
+
+dat$al <- factor(dat$al, levels = c(0,1), labels = c("nal","al"))
+dat$al_mlc <- factor(dat$al_mlc, levels = c(0,1), labels = c("no","yes"))
+
+# dat$al_longune <- with(dat, ifelse(al== "al" & longune== "long", 1,
+#                             ifelse(al== "al" & longune =="short", 0, NA)))
+# dat$al_longune <- factor(dat$al_longune, levels = c(0,1), labels = c("no","yes"))
+
+# dat$al_longune <- with(dat, ifelse(al== "al" & longune== "long", 1,
+#                             ifelse(al== "al" & longune =="short", 0, 2)))
+# dat$al_longune <- factor(dat$al_longune, levels = c(0,1,2), labels = c("no","yes","new"))
+
+table(dat$al_longune, useNA="ifany")
+ 
+# dat$al_expue <- with(dat, ifelse(expue_rec2 == "low_expue", 1,
+#                           ifelse(expue_rec2 == "middle_expue", 2,3)))
+# dat$al_expue <-factor(dat$al_expue, levels = c(1,2,3), labels = c("low","middle","high"))
+#
+# # Bugfix?
+# #al$expue_rec <- ifelse((al$expft16 == 0 & al$exppt16 == 0), NA, (al$expue16/ (al$expft16 + al$exppt16 + al$expue16)))
+# dat$test <- ifelse(dat$al == "al", (dat$expue16/ (dat$expft16 + dat$exppt16 + dat$expue16)),NA) ## Noch fehlerhaft, weil Leute drin sind die mal AL waren
+# #cut in quantiles (.0 - .33, - .66, - .1)
+# dat$test2 <- cut(dat$test, breaks = c(quantile(al$expue_rec, c(0,0.33,0.66,1), na.rm = TRUE)), labels = c("low_expue","middle_expue","high_expue"))
+# 
+# table(dat$al, dat$test2)
 
 
+#Regression only with al/nal difference after new clustering
+
+# 1. with al and al_mlc
+model1 <- lm(bgp175 ~ al + al_mlc, data = dat)
+summary(model1)
+
+dat %>% filter(al == "nal", al_mlc == "no") %>% summarise(mean = mean(bgp175),cases=n(), sd(bgp175))
+
+lm.beta(model1)
+
+vif(model1)
+dwt(model1)
+par(mfrow=c(2,2))
+plot(model1)
+
+
+#2. with al, al_mlc and longune
+
+summary(lm(bgp175 ~ al + al_mlc + al_longune, data = dat))
+
+table(dat$al_longune)
+
+#summary(lm(bgp175 ~ al + al_mlc + al_longune + al_expue, data = dat))
+
+
+
+# ## remove incomplete cases
+# debug <- na.omit(dat)
+# ## extract factor columns and drop redundant levels
+# fctr <- lapply(dat[sapply(dat, is.factor)], droplevels)
+# ## count levels
+# sapply(fctr, nlevels)
+
+
+#3. with rest of control variables
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec, data=dat))
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex, data=dat))
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec, data=dat))
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec, data=dat))
+
+model2 <- lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec, data=dat)
+summary(model2)
+
+lm.beta(model2)
+confint(model2)
+vif(model2)
+dwt(model2)
+par(mfrow=c(2,2))
+plot(model2)
+summary(lm(bgp175 ~ al + al_mlc  + bgpsex + migback_rec + child_rec, data=dat))
+
+
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec + al.p + al_longune, data=dat))
+
+summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec + al.p, data=dat)) # al_longune
+
+test <-lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec + al.p + al_longune, data=dat)
+
+table(dat$age_rec2, dat$longune)
+
+#summary(lm(bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec + al.p + al_longune + al_expue, data=dat))
+
+plot(test)
+
+
+library(car)
+
+
+lm.beta(test)
+
+##Multicollinearityrr
+vif(test)
+1/vif(test) # Kein Wert < 1 oder >10, gut
+mean(vif(test))
+
+#For our current model the VIF values are all well below 10 and the tolerance statistics all well 
+#above 0.2. Also, the average VIF is very close to 1. Based on these measures we can safely conclude
+#that there is no collinearity within our data.
+
+dwt(test) # Value zwischen 1 und 3 --> okay, aber signifikant (schlecht)
+
+#As a conservative rule I suggested that values less than 1 or greater than 3 
+# should definitely raise alarm bells. The closer to 2 that the value is, the better, 
+# and for these data (Output 7.8) the value is 1.950, which is so close to 2 that the 
+# assumption has almost certainly been met. The p-value of .7 confirms this conclusion 
+# (it is very much bigger than .05 and, therefore, not remotely significant). 
+# (The p-value is a little strange, because it is bootstrapped, and so, for complex 
+#   reasons that we don’t want to go into here, it is not always the same every time you run the command.)
+
+
+par(mfrow=c(2,2))
+plot(test)
+
+##Checking Residual Assumptions: check the assumptions that relate to the residuals (or errors)
+
+###1. Plot - Plot of residuals against predicted (fitted) values 
+
+# The first useful graph is a plot of fitted values against residuals. 
+# This should look like a random array of dots evenly dispersed around zero. 
+# If this graph funnels out, then the chances are that there is heteroscedasticity in the data. 
+# If there is any sort of curve in this graph then the chances are that the data have violated the 
+# assumption of linearity.
+
+# --> situation in which the assumptions of linearity and homoscedasticity have been met.
+
+###Plot2:
+
+# The straight line in this plot represents a normal distribution, and the points represent the 
+# observed residuals. Therefore, in a perfectly normally distributed data set, all points will lie on the line. 
+# This is pretty much what we see for the record sales data (Figure 7.17, left-hand side). 
+# However, next to the normal probability plot of the record sales data is an example of a plot for 
+# residuals that deviate from normality. In this plot, the dots are very distant from the line (at the extremes), 
+# which indicates a deviation from normality (in this particular case skew).
+
+## --> Keine Normalverteilung: Schiefe....
+
+hist(rstudent(test))
+
+
+# We could summarize by saying that the model appears, in most senses, to be both accurate for 
+# the sample and generalizable to the population. Therefore, we could conclude that in our sample 
+# advertising budget and airplay are fairly equally important in predicting album sales. Attractiveness 
+# of the band is a significant predictor of album sales but is less important than the other two predictors 
+# (and probably needs verification because of possible heteroscedasticity). The assumptions seem to have been 
+# met and so we can probably assume that this model would generalize to any album being released.
+
+#Bootstrapped Regression
+library(boot)
+bootReg <- function (formula, data, indices)
+{
+  d <- data [i,]
+  fit <- lm(formula, data = d)
+  return(coef(fit))
+}
+
+bootResults<-boot(statistic = bootReg, formula = bgp175 ~ al + al_mlc + pgisced11_rec + bgpsex + migback_rec + child_rec + al.p + al_longune, data=dat, R = 2000)
+
+####Old Regression Model#####
+
+# setwd("C:/Users/Dietmar/Desktop/Wissen ist Macht/StatistikLiteratur/DiscoveringStatisticsUsingR/Data files/Data files")
+# getwd()
+# list.files()
+# 
+# album1 <- read.delim("Album Sales 1.dat", header = T)
+# albumSales.1 <- lm(sales ~ adverts, data = album1)
+# summary(albumSales.1)
+# 
+# sqrt(0.3346)
+# 
+# typeof(album1)
+# 
+# album2 <- read.delim("Album Sales 2.dat", header = T)
+# head(album2)
+# str(album2)
+# 
+# albumSales.2 <- lm(sales ~ adverts, data = album2)
+# albumSales.3 <- lm(sales ~ adverts + airplay + attract, data = album2)
+# 
+# summary(albumSales.2)
+# summary(albumSales.3)
+# 
+# install.packages("QuantPsyc")
+# library(QuantPsyc)
+# 
+# lm.beta(albumSales.3)
+# 
+# confint(albumSales.3)
+# 
+# anova(albumSales.2, albumSales.3)
+# 
+# 
+# album2$residuals<-resid(albumSales.3)
+# album2$standardized.residuals<- rstandard(albumSales.3)
+# album2$studentized.residuals<-rstudent(albumSales.3)
+# album2$cooks.distance<-cooks.distance(albumSales.3)
+# album2$dfbeta<-dfbeta(albumSales.3)
+# album2$dffit<-dffits(albumSales.3)
+# album2$leverage<-hatvalues(albumSales.3)
+# album2$covariance.ratios<-covratio(albumSales.3)
+# 
+# album2
+# 
+# head(album2)
+# 
+# album2$standardized.residuals > 2 | album2$standardized.residuals < -2
+# 
+# album2$large.residual <- album2$standardized.residuals > 2 | album2$standardized.residuals < -2
+# 
+# sum(album2$large.residual)
+# album2[album2$large.residual, c("sales", "airplay", "attract", "adverts", "standardized.residuals")]
+# 
+# album2[album2$large.residual, c("cooks.distance", "leverage", "covariance.ratios")]
+# 
+# durbinWatsonTest(albumSales.3)
+# 
+# install.packages("car")
+# library(car)
+# 
+# vif(albumSales.3)
+# 1/vif(albumSales.3)
+# mean(vif(albumSales.3))
+# 
+# plot(albumSales.3)
+# 
+# hist(rstudent(albumSales.3))
